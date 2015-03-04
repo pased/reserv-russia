@@ -1,139 +1,18 @@
 library(ggvis)
-date1 <- c("2015-02-20", "2015-02-13", "2015-02-06",
-           "2015-01-30", "2015-01-23", "2015-01-16", 
-           "2015-01-09", "2015-01-02",
-           "2014-12-26",
-           "2014-12-19",
-           "2014-12-12",
-           "2014-12-05",
-           "2014-12-28",
-           
-           "2014-11-21",
-           "2014-11-14",
-           "2014-11-07",
-           
-           "2014-10-31",
-           "2014-10-24",
-           "2014-10-17",
-           "2014-10-10",
-           "2014-10-03",
-           
-           "2014-09-26",
-           "2014-09-19",
-           "2014-09-12",
-           "2014-09-05",
-           
-           "2014-08-29",
-           "2014-08-22",
-           "2014-08-15",
-           "2014-08-08",
-           "2014-08-01",
-           
-           "2014-07-25",
-           "2014-07-18",
-           "2014-07-11",
-           "2014-07-04",
-           
-           "2014-06-27",
-           "2014-06-20",
-           "2014-06-13",
-           "2014-06-06",
-           
-           "2014-05-30",
-           "2014-05-23",
-           "2014-05-16",
-           "2014-05-09",
-           "2014-05-02",
-           
-           "2014-04-25",
-           "2014-04-18",
-           "2014-04-11",
-           "2014-04-04",
-           
-           "2014-03-28",
-           "2014-03-21",
-           "2014-03-14",
-           "2014-03-07",
-           
-           "2014-02-28",
-           "2014-02-21",
-           "2014-02-14",
-           "2014-02-07",
-           
-           "2014-01-31",
-           "2014-01-24",
-           "2014-01-17",
-           "2014-01-10",
-           "2014-01-03")
-value2 <- c(364.6, 368.3, 374.7, 376.3, 378.1, 379.4, 386.2, 386.2,
-            388.5,
-            398.9,
-            414.6,
-            416.2,
-            420.5,
-            420.4,
-            420.6,
-            421.4,
-            428.6,
-            439.1,
-            443.8,
-            451.7,
-            454.7,
-            456.8,
-            458.3,
-            459.9,
-            464.2,
-            465.8,
-            466.1,
-            468.6,
-            468.6,
-            468.4,
-            472.4,
-            472.5,
-            476.7,
-            474.3,
-            475.8,
-            471.1,
-            468.7,
-            469.9,
-            466.9,
-            468.4,
-            466.8,
-            471.1,
-            471.6,
-            482.7,
-            482,
-            477.7,
-            473.9,
-            484,
-            486.6,
-            493.2,
-            494.6,
-            493.3,
-            493.4,
-            492.5,
-            490.2,
-            498.9,
-            496.7,
-            498.8,
-            499.1,
-            510.5)
-data <- data.frame(date1, value2)
-names(data) <- c("Date", "Value")
-data$Date <- as.Date(data$Date)
 
-data %>%
+# Sample data from 2014 till 2015-02
+data2014 <- read.csv("data2014.csv")
+data2014$Date <- as.Date(data2014$Date)
+
+# Linear model with prediction for 2017-04-23
+data2014 %>%
   ggvis(~Date, ~Value) %>%
   layer_points() %>%
   layer_lines() %>%
   layer_model_predictions(model="lm", stroke:="red",
                           domain=as.Date(c("2014-01-03","2017-04-23")))
 
-o1<-as.Date(c("2014-01-03","2015-12-23"))
-o2<-as.Date(c("2014-01-03","2016-04-23"))
-o3<-as.Date(c("2014-01-03","2016-12-23"))
-o4<-as.Date(c("2014-01-03","2017-04-23"))
-
+# Broken ggvis code. Trying to do interactive input for prediction period.
 data %>%
   ggvis(~Date, ~Value) %>%
   layer_points() %>%
@@ -142,7 +21,45 @@ data %>%
                           domain=input_radiobuttons(c(o1,o2,o3,o4),
                                   selected=as.Date(c("2014-01-03","2015-12-23")), map=as.Date))
 
+# Nothing important in this chunk.
 model <- glm(Value ~ Date, data=data)
 model <- lm(Date ~ Value, data=data)
 new.df <- data.frame(Date=as.Date("2017-04-23"))
 predict(model, new.df)
+
+# Scrapping all availiable data from http://www.cbr.ru/hd_base/Default.aspx?Prtid=mrrf_7d
+# Table is saved to cbr.html
+library(rvest)
+
+reservru <- html('K:/валютные резервы ЦБ РФ/cbr.html')
+
+testdata <- reservru %>%
+  html_nodes("table") %>%
+  .[[1]] %>%
+  html_table()
+
+# Tidying up the data
+names(testdata) <- c("Date", "Value")
+
+testdata$Date <- strptime(testdata$Date, "%d.%m.%Y")
+testdata$Date <- as.Date(testdata$Date)
+testdata$Value <- as.numeric(testdata$Value)
+
+write.csv2(testdata, "data.csv") #Now the data is in a proder data file.
+
+# Working with the whole dataset from 1998-05-29 till 2015-02-20
+data <- read.csv2("data.csv")
+data$Date <- as.Date(data$Date)
+
+data %>%
+  ggvis(~Date, ~Value) %>%
+  layer_points()
+
+summary(data)
+plot(data$Date, data$Value, ylab="Резервы",xlab="дата",
+     main="Валютные резервы ЦБ РФ в млрд. долл. США")
+abline(v=as.Date("2008-09-01"), col="blue")
+text(x=as.Date("2004-01-01"), y=350, "поднимается с колен")
+text(x=as.Date("2009-06-01"), y=550, "бля")
+abline(v=as.Date("2014-01-01"), col="red")
+text(x=as.Date("2014-06-01"), y=300, "введи войска")
